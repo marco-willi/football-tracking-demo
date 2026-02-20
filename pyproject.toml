@@ -22,6 +22,7 @@ dependencies = [
     # Computer Vision and ML
     "ultralytics", # YOLOv8 with built-in PyTorch
     "supervision", # ByteTrack tracker
+    "boxmot",      # BoT-SORT (camera motion compensation)
 
     # Visualization
     "matplotlib",

@@ -26,7 +26,7 @@ from football_tracking_demo.config import (
     load_config,
 )
 from football_tracking_demo.detector import PlayerDetector
-from football_tracking_demo.tracker import ByteTracker
+from football_tracking_demo.tracker import build_tracker
 from football_tracking_demo.video_io import VideoWriter, get_video_metadata, load_video
 from football_tracking_demo.viz import TrackVisualizer
 
@@ -173,7 +173,8 @@ def run_pipeline(config: dict[str, Any], video_path: str | None = None) -> None:
         field_mask_config=mask_cfg,
     )
 
-    tracker = ByteTracker.from_config(track_cfg)
+    tracker = build_tracker(track_cfg)
+    print(f"Tracker: {track_cfg.get('tracker', 'bytetrack')}")
     visualizer = TrackVisualizer.from_config(viz_cfg)
 
     output_video_path = out_cfg.get("video_path", "outputs/demo.mp4")
@@ -191,7 +192,7 @@ def run_pipeline(config: dict[str, Any], video_path: str | None = None) -> None:
         for frame_idx, frame in pbar:
             timestamp = frame_idx / fps
             detections = detector.detect_and_filter(frame)
-            tracks = tracker.update(detections)
+            tracks = tracker.update(detections, frame)
 
             for trk in tracks:
                 all_tracks.append(

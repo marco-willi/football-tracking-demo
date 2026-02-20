@@ -11,7 +11,7 @@ data/*
 outputs/*.mp4
 outputs/*.avi
 outputs/*.mov
-outputs/*.gif
+!outputs/*.gif
 outputs/*.jsonl
 
 !outputs/.gitkeep

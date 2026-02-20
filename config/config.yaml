@@ -59,12 +59,26 @@ playing_field_mask:
   morph_kernel_size: 50     # Morphological closing kernel size
   min_overlap: 0.2          # Min fraction of bottom-half bbox pixels on field
 
-# Tracking parameters (ByteTrack)
+# Tracking parameters
+#
+# tracker: bytetrack  — supervision ByteTrack (no CMC, no ReID)
+# tracker: botsort    — boxmot BoT-SORT (sparse-optical-flow CMC, optional ReID)
+#
+# Shared parameters apply to both backends.
 tracking:
+  tracker: botsort    # bytetrack | botsort
   track_buffer: 30      # Frames to keep lost tracks
   match_threshold: 0.8  # IOU threshold for matching
   frame_rate: 60        # Video frame rate (for velocity estimation)
   track_activation_threshold: 0.25 # Minimum confidence to activate new track
+
+  # BoT-SORT specific (only used when tracker: botsort)
+  botsort:
+    device: 0               # Inference device for ReID model (cpu | cuda | mps)
+    half: false             # FP16 inference for ReID
+    reid_weights: null      # Path to ReID weights file; null = CMC only, no ReID
+                            # e.g. "checkpoints/osnet_x0_25_msmt17.pt"
+    cmc_method: sof         # Camera motion compensation: sift | ecc | orb | sof
 
 # Visualization
 visualization:

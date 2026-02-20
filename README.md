@@ -1,6 +1,6 @@
 # Football Player Tracking Demo
 
-Detect and track football (soccer) players in broadcast video using YOLO26 (or YOLOv8) and ByteTrack. The pipeline processes a short match clip frame-by-frame, assigns stable IDs across frames, and exports an annotated video, structured track data, and a demo GIF.
+Detect and track football (soccer) players in broadcast video using YOLO26 (or YOLOv8) and BoT-SORT. The pipeline processes a short match clip frame-by-frame, assigns stable IDs across frames, and exports an annotated video, structured track data, and a demo GIF.
 
 ![Demo GIF](outputs/demo.gif)
 
@@ -19,7 +19,7 @@ YOLO Detection       -- COCO-pretrained person detector (YOLO26 / YOLOv8)
 Playing Field Filter -- reject detections by size, aspect ratio, green field mask
     |
     v
-ByteTrack            -- multi-object tracking with stable IDs
+BoT-SORT             -- multi-object tracking with camera motion compensation
     |
     v
 Visualization        -- bounding boxes, track IDs, motion trails
@@ -57,11 +57,25 @@ Model sizes range from very small (2.4M parameters) to rather arge (65 M paramet
 
 Assessing the quality, without labelled data, is difficult. It seems larger models are generally better. Important is that model-size influences detection confidence, which needs to be considered when tuning the tracker.
 
-### Byte Track
+### Tracking
 
-**ByteTrack** (via the [supervision](https://github.com/roboflow/supervision) library) handles online multi-object association with a 120-frame track buffer for handling brief occlusions. This could be tuned further or improved with methods based on appearaace embeddings for example.
+**ByteTrack** (via [supervision](https://github.com/roboflow/supervision)) does not use camera motion correction. This seems to be an issue and was the reason to test BotSort. Switch backends by setting `tracking.tracker: bytetrack` in `config.yaml`.
 
-Another issue is the kalman filter in the tracker, wich does not account for camera movements. Global movement should be corrected for.
+**BoT-SORT** (via [boxmot](https://github.com/mikel-brostrom/boxmot)) is the default tracker. It extends ByteTrack with a camera motion compensation (CMC) step: sparse optical flow estimates the inter-frame camera transform and corrects all Kalman predictions before IoU matching. This substantially reduces track fragmentation. This was a key improvement
+
+ReID is disabled by default (CMC only). Pass a path to an osnet/resnet weight file via `tracking.botsort.reid_weights` to enable appearance-based re-identification.
+
+
+<table>
+  <tr>
+    <th>ByteTrack (no CMC)</th>
+    <th>BoT-SORT (sparse optical flow CMC)</th>
+  </tr>
+  <tr>
+    <td><img src="outputs/demo_byte_tracker.gif" width="360" alt="ByteTrack" /></td>
+    <td><img src="outputs/demo.gif" width="360" alt="BoT-SORT" /></td>
+  </tr>
+</table>
 
 ## Project Structure
 
@@ -75,7 +89,7 @@ football-tracking-demo/
 │   ├── video_io.py           # Video read/write (OpenCV)
 │   ├── detector.py           # YOLOv8 detection + HUD masking
 │   ├── filtering.py          # Size, aspect ratio, playing field filters
-│   ├── tracker.py            # ByteTrack wrapper
+│   ├── tracker.py            # BoT-SORT / ByteTrack tracker backends
 │   └── viz.py                # Drawing boxes, IDs, motion trails
 ├── notebooks/
 │   ├── 01-mw-detection-hud-mask-inspection.ipynb
@@ -192,17 +206,27 @@ playing_field_mask:
 
 ### `tracking`
 
-Parameters passed to ByteTrack for multi-object association.
+Selects the tracker backend and shared association parameters.
 
 ```yaml
 tracking:
-  track_buffer: 60             # Frames a lost track is kept alive before deletion;
+  tracker: botsort             # bytetrack | botsort (default: botsort)
+  track_buffer: 30             # Frames a lost track is kept alive before deletion;
                                # increase for longer occlusions
   match_threshold: 0.8         # Minimum IoU to match a detection to an existing track
   frame_rate: 60               # Source video FPS (used internally for velocity priors)
   track_activation_threshold: 0.25  # Minimum confidence for a detection to start a
                                      # new track (higher = fewer spurious tracks)
+
+  # BoT-SORT specific (only used when tracker: botsort)
+  botsort:
+    device: 0                  # Device for ReID model: cpu | cuda | mps
+    half: false                # FP16 inference for ReID
+    reid_weights: null         # Path to ReID weights; null = CMC only, no ReID
+    cmc_method: sof            # Camera motion compensation: sift | ecc | orb | sof
 ```
+
+Switch to ByteTrack (no CMC) by setting `tracker: bytetrack` and removing the `botsort` block.
 
 ### `visualization`
 
@@ -278,7 +302,8 @@ make all              # Download data + run full pipeline
 
 - **Python 3.14+**
 - **YOLO26 / YOLOv8** (Ultralytics) -- object detection
-- **ByteTrack** (supervision) -- multi-object tracking
+- **BoT-SORT** (boxmot, default) -- multi-object tracking with camera motion compensation
+- **ByteTrack** (supervision, optional) -- lightweight alternative tracker
 - **OpenCV** -- video I/O and image processing
 - **NumPy** / **Matplotlib** -- data handling and plotting
 - **imageio** -- GIF generation
