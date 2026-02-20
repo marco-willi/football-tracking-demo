@@ -7,8 +7,6 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-CURRENT_UID := $(shell id -u)
-CURRENT_GID := $(shell id -g)
 
 # Paths
 INPUT_VIDEO := data/match.mp4

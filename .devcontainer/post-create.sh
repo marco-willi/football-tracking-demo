@@ -28,7 +28,7 @@ python -c "import lightning; print(f'  lightning installed')" 2>/dev/null || ech
 # Setup Jupyter kernel
 echo ""
 echo "Setting up Jupyter kernel..."
-python -m ipykernel install --name=ml-template --display-name="Python (ML Template)"
+/opt/conda/bin/python -m ipykernel install --name=football-tracker --display-name="Python (Football Tracking Demo)" || echo "Warning: Failed to install Jupyter kernel (continuing anyway)"
 echo "Jupyter kernel installed"
 
 # Install pre-commit hooks if .pre-commit-config.yaml exists

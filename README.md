@@ -10,7 +10,7 @@ Detect and track football (soccer) players in broadcast video using YOLO26 (or Y
 Input Video
     |
     v
-HUD Masking          -- black out top / bottom horizontals (simple)
+HUD Masking          -- black out top / bottom horizontals -- DISABLED (too rigid)
     |
     v
 YOLO Detection       -- COCO-pretrained person detector (YOLO26 / YOLOv8)
@@ -28,11 +28,40 @@ Visualization        -- bounding boxes, track IDs, motion trails
 Export               -- annotated MP4, JSONL tracks, metrics plot, demo GIF
 ```
 
-### Key design decisions
+### HUD masking
 
-- **HUD masking** removes the top X% and bottom Y% of each frame before detection, eliminating false positives of non-players.
-- **Playing field filtering** combines geometric constraints (bounding box size, aspect ratio) with an HSV-based green field mask to reject crowd and off-field detections.
-- **ByteTrack** (via the [supervision](https://github.com/roboflow/supervision) library) handles online multi-object association with a 30-frame track buffer for handling brief occlusions.
+HUD masking removes the top X% and bottom Y% of each frame before detection, eliminating false positives of non-players. I ultimately disabled it due to it's rigidity, particularly, when camera moves it is possible no edge remains and the filter removes parts of the playing field.
+
+<img src="outputs/hud_mask_example.png" width="700" alt="HUD Masking" />
+
+### Playing Field Filter
+
+The playing field (pitch) filter is used to filter detections from non-players. It uses HSV color-space to filter out regions that do not belong to the field ([HSV for green](https://stackoverflow.com/questions/48109650/how-to-detect-two-different-colors-using-cv2-inrange-in-python-opencv)). Note that the score display is filtered quite well, as is the right side of the field. Problematic is generally the area between the actual playing field and the end of the green.
+
+<img src="outputs/field_mask_samples.png" width="700" alt="Hand-Tuned Selection for HSV" />
+
+Also used is a morphological operation to 'fill' gaps in the green using differnt kernel sizes. See cClosing gaps in masks: [Link](https://opencv24-python-tutorials.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_morphological_ops/py_morphological_ops.html#closing).
+
+
+<img src="outputs/field_mask_kernel_comparison.png" width="700" alt="Kernel Comparison" />
+
+Other filters operate directly on the bbx / detection size.
+
+
+### Model Variants
+
+Model sizes range from very small (2.4M parameters) to rather arge (65 M parameters) and it has important practical implications on inference speed:
+
+<img src="outputs/model_speed_comparison.png" width="700" alt="Inference Speed" />
+
+
+Assessing the quality, without labelled data, is difficult. It seems larger models are generally better. Important is that model-size influences detection confidence, which needs to be considered when tuning the tracker.
+
+### Byte Track
+
+**ByteTrack** (via the [supervision](https://github.com/roboflow/supervision) library) handles online multi-object association with a 120-frame track buffer for handling brief occlusions. This could be tuned further or improved with methods based on appearaace embeddings for example.
+
+Another issue is the kalman filter in the tracker, wich does not account for camera movements. Global movement should be corrected for.
 
 ## Project Structure
 
@@ -52,7 +81,8 @@ football-tracking-demo/
 │   ├── 01-mw-detection-hud-mask-inspection.ipynb
 │   ├── 02-mw-detection-threshold.ipynb
 │   ├── 03-mw-compare-models.ipynb
-│   └── 04-mw-playing-field-masking.ipynb
+│   ├── 04-mw-playing-field-masking.ipynb
+│   └── 05-mw-tracker-tuning.ipynb
 ├── scripts/
 │   └── download_video.sh     # Download CC-BY source clip
 ├── checkpoints/              # Cached model weights (gitignored)
@@ -158,6 +188,8 @@ playing_field_mask:
 
 > Tune these parameters interactively in [`04-mw-playing-field-masking.ipynb`](notebooks/04-mw-playing-field-masking.ipynb).
 
+> To understand how `track_buffer`, `match_threshold`, and `track_activation_threshold` interact with track fragmentation, see [`05-mw-tracker-tuning.ipynb`](notebooks/05-mw-tracker-tuning.ipynb).
+
 ### `tracking`
 
 Parameters passed to ByteTrack for multi-object association.
@@ -189,9 +221,9 @@ visualization:
 
 ### Model Variants
 
-The pipeline supports YOLO26 (recommended) and legacy YOLOv8 variants. Weights are downloaded on first run and cached in `checkpoints/`.
+The pipeline supports YOLO26 and legacy YOLOv8 variants. Weights are downloaded on first run and cached in `checkpoints/`. At first glance, the performance is not that differente between YOLO26 and YOLOv8 but rather within the variants (from small to large).
 
-#### YOLO26 — recommended ([source](https://docs.ultralytics.com/models/yolo26/))
+#### YOLO26 — newest [source](https://docs.ultralytics.com/models/yolo26/))
 
 COCO val, 640px input. CPU: ONNX, GPU: T4 TensorRT.
 
@@ -203,7 +235,7 @@ COCO val, 640px input. CPU: ONNX, GPU: T4 TensorRT.
 | yolo26l | 24.8M | 86.4 | 55.0 | 286.2 | 6.2 | Large -- high accuracy |
 | yolo26x | 55.7M | 193.9 | 57.5 | 525.8 | 11.8 | XLarge -- best accuracy |
 
-#### YOLOv8 — legacy
+#### YOLOv8
 
 | Model | Params | FLOPs (B) | mAP50-95 | CPU (ms) | GPU (ms) | Notes |
 |-------|--------|-----------|----------|----------|----------|-------|

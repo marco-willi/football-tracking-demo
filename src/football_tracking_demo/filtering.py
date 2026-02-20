@@ -64,7 +64,7 @@ def build_playing_field_mask(
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, np.array(hsv_lower), np.array(hsv_upper))
     kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (morph_kernel_size, morph_kernel_size)
+        cv2.MORPH_RECT, (morph_kernel_size, morph_kernel_size)
     )
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     return mask
@@ -103,6 +103,77 @@ def filter_by_field_overlap(
         if np.count_nonzero(roi) / roi.size >= min_overlap:
             kept.append(det)
     return kept
+
+
+def build_white_line_mask(
+    frame: np.ndarray,
+    white_lower: tuple[int, int, int] = (0, 0, 180),
+    white_upper: tuple[int, int, int] = (180, 40, 255),
+    morph_kernel_size: int = 3,
+) -> np.ndarray:
+    """Create a binary mask of white field line pixels.
+
+    White lines have low saturation and high brightness in HSV.
+
+    Args:
+        frame: BGR image.
+        white_lower: Lower HSV bound for white (hue ignored, low sat, high val).
+        white_upper: Upper HSV bound for white.
+        morph_kernel_size: Kernel size for morphological closing to join broken pixels.
+
+    Returns:
+        Binary mask (H, W) where 255 = white line pixel.
+    """
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, np.array(white_lower), np.array(white_upper))
+    if morph_kernel_size > 1:
+        kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (morph_kernel_size, morph_kernel_size)
+        )
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    return mask
+
+
+def detect_field_lines(
+    frame: np.ndarray,
+    white_lower: tuple[int, int, int] = (0, 0, 180),
+    white_upper: tuple[int, int, int] = (180, 40, 255),
+    canny_low: int = 50,
+    canny_high: int = 150,
+    hough_threshold: int = 80,
+    min_line_length: int = 40,
+    max_line_gap: int = 10,
+) -> list[tuple[int, int, int, int]]:
+    """Detect white field line segments using probabilistic Hough transform.
+
+    Pipeline: white HSV mask → Canny edges → HoughLinesP.
+
+    Args:
+        frame: BGR image.
+        white_lower: Lower HSV bound for white pixels.
+        white_upper: Upper HSV bound for white pixels.
+        canny_low: Lower threshold for Canny edge detector.
+        canny_high: Upper threshold for Canny edge detector.
+        hough_threshold: Minimum vote count to accept a line.
+        min_line_length: Minimum segment length in pixels.
+        max_line_gap: Maximum gap in pixels to join collinear segments.
+
+    Returns:
+        List of (x1, y1, x2, y2) line segments.
+    """
+    white_mask = build_white_line_mask(frame, white_lower, white_upper)
+    edges = cv2.Canny(white_mask, canny_low, canny_high)
+    raw = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=hough_threshold,
+        minLineLength=min_line_length,
+        maxLineGap=max_line_gap,
+    )
+    if raw is None:
+        return []
+    return [(int(x1), int(y1), int(x2), int(y2)) for x1, y1, x2, y2 in raw[:, 0]]
 
 
 def filter_detections(

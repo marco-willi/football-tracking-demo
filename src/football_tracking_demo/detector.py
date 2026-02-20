@@ -23,7 +23,7 @@ def apply_hud_mask(
 
 
 class PlayerDetector:
-    """YOLOv8-based person detector with HUD masking."""
+    """YOLO-x-based person detector with HUD masking."""
 
     PERSON_CLASS_ID = 0  # COCO class 0 = person
 

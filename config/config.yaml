@@ -37,7 +37,7 @@ detection:
 
 # HUD masking (remove UI overlays)
 hud_mask:
-  enabled: true
+  enabled: false
   top_percent: 0.05    # Mask top 5% of frame
   bottom_percent: 0.10 # Mask bottom 10% of frame
 
@@ -54,14 +54,14 @@ detection_shape_filter:
 # Playing field color mask (HSV-based green region filter)
 playing_field_mask:
   enabled: true
-  hsv_lower: [30, 30, 30]   # HSV lower bound for green
-  hsv_upper: [90, 255, 255] # HSV upper bound for green
-  morph_kernel_size: 60     # Morphological closing kernel size
-  min_overlap: 0.0          # Min fraction of bottom-half bbox pixels on field
+  hsv_lower: [36, 40, 30]   # HSV lower bound for green
+  hsv_upper: [70, 255, 180] # HSV upper bound for green
+  morph_kernel_size: 50     # Morphological closing kernel size
+  min_overlap: 0.2          # Min fraction of bottom-half bbox pixels on field
 
 # Tracking parameters (ByteTrack)
 tracking:
-  track_buffer: 60      # Frames to keep lost tracks
+  track_buffer: 30      # Frames to keep lost tracks
   match_threshold: 0.8  # IOU threshold for matching
   frame_rate: 60        # Video frame rate (for velocity estimation)
   track_activation_threshold: 0.25 # Minimum confidence to activate new track
