@@ -30,7 +30,7 @@ Export               -- annotated MP4, JSONL tracks, metrics plot, demo GIF
 
 ### HUD masking
 
-HUD masking removes the top X% and bottom Y% of each frame before detection, eliminating false positives of non-players. I ultimately disabled it due to it's rigidity, particularly, when camera moves it is possible no edge remains and the filter removes parts of the playing field.
+HUD masking removes the top X% and bottom Y% of each frame before detection, eliminating false positives of non-players. I ultimately disabled it due to it's rigidity, particularly, when camera moves, it is possible no edge remains and the filter would remove parts of the playing field.
 
 <img src="outputs/hud_mask_example.png" width="700" alt="HUD Masking" />
 
@@ -40,7 +40,7 @@ The playing field (pitch) filter is used to filter detections from non-players. 
 
 <img src="outputs/field_mask_samples.png" width="700" alt="Hand-Tuned Selection for HSV" />
 
-Also used is a morphological operation to 'fill' gaps in the green using differnt kernel sizes. See cClosing gaps in masks: [Link](https://opencv24-python-tutorials.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_morphological_ops/py_morphological_ops.html#closing).
+Also used is a morphological operation to 'fill' gaps in the green using differnt kernel sizes. See closing gaps in masks: [Link](https://opencv24-python-tutorials.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_morphological_ops/py_morphological_ops.html#closing).
 
 
 <img src="outputs/field_mask_kernel_comparison.png" width="700" alt="Kernel Comparison" />
@@ -259,6 +259,7 @@ Notebook [`03-mw-compare-models.ipynb`](notebooks/03-mw-compare-models.ipynb) pr
 | [`02-mw-detection-threshold`](notebooks/02-mw-detection-threshold.ipynb) | Sweep confidence thresholds and shape filter presets; threshold × filter heatmap |
 | [`03-mw-compare-models`](notebooks/03-mw-compare-models.ipynb) | Compare YOLO26 and YOLOv8 variants: detection quality, inference speed, confidence |
 | [`04-mw-playing-field-masking`](notebooks/04-mw-playing-field-masking.ipynb) | Interactive tuning of HSV bounds, kernel size, and overlap threshold for the field mask |
+| [`05-mw-tracker-tuning`](notebooks/05-mw-tracker-tuning.ipynb) | Track ID switch analysis: diagnose fragmentation, visualise centroid trajectories and confidence drops, re-run ByteTrack with tunable parameters |
 
 ## Makefile Targets
 
